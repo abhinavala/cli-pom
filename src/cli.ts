@@ -1,0 +1,38 @@
+#!/usr/bin/env node
+import { Command } from "commander";
+import { ensureInitialized } from "./storage/index.js";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
+
+const program = new Command();
+
+program
+  .name("fin")
+  .description("Personal Finance Tracker CLI")
+  .version(pkg.version);
+
+// Subcommand groups
+const account = new Command("account").description("Manage accounts");
+const tx = new Command("tx").description("Manage transactions");
+const budget = new Command("budget").description("Manage budgets");
+const rule = new Command("rule").description("Manage recurring rules");
+const importCmd = new Command("import").description("Import transactions");
+const report = new Command("report").description("Generate reports");
+const exportCmd = new Command("export").description("Export data");
+
+program.addCommand(account);
+program.addCommand(tx);
+program.addCommand(budget);
+program.addCommand(rule);
+program.addCommand(importCmd);
+program.addCommand(report);
+program.addCommand(exportCmd);
+
+// Run bootstrap before any command
+program.hook("preAction", () => {
+  ensureInitialized();
+});
+
+program.parse(process.argv);
