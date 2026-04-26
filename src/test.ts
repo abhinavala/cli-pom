@@ -10,9 +10,11 @@ const testDir = mkdtempSync(join(tmpdir(), "fin-test-"));
 process.env["FIN_DATA_DIR"] = testDir;
 
 import { writeJsonFile, readJsonFile, getFilePath, ensureInitialized } from "./storage/index.js";
-import { AccountSchema, TransactionSchema, BudgetSchema } from "./schemas.js";
+import { AccountSchema, TransactionSchema, BudgetSchema, RecurringRuleSchema } from "./schemas.js";
 import { checkBudgetAfterTransaction } from "./lib/budget-check.js";
+import { generateMarkdown } from "./commands/export.js";
 import { z } from "zod";
+import { readFileSync, existsSync } from "node:fs";
 
 let passed = 0;
 let failed = 0;
@@ -190,6 +192,124 @@ writeJsonFile(getFilePath("transactions.json"), []);
 const noBudgetTx = makeTx("nb-1", "acc-1", -50, "misc", "Something", "2026-04-01");
 const noBudgetResult = checkBudgetAfterTransaction(noBudgetTx);
 assert(noBudgetResult === null, "Returns null when no budget set for category");
+
+// ─── Test 6: Export — month with full data ────────────────────────────────────
+
+console.log("\nTest 6: Export — month with full data (accounts, transactions, budgets, rules)");
+resetData();
+
+const exportAcc = makeAccount("ea-1", "Checking");
+writeJsonFile(getFilePath("accounts.json"), [exportAcc]);
+writeJsonFile(getFilePath("budgets.json"), [
+  { category: "groceries", monthlyLimit: 200, warnAt: 0.8 },
+]);
+writeJsonFile(getFilePath("rules.json"), [
+  {
+    id: "r-1",
+    accountId: "ea-1",
+    amount: -50,
+    category: "groceries",
+    description: "Weekly groceries",
+    rrule: "FREQ=WEEKLY",
+    startDate: "2026-04-01",
+    lastMaterializedDate: undefined,
+    endDate: undefined,
+    createdAt: new Date().toISOString(),
+  },
+]);
+writeJsonFile(getFilePath("transactions.json"), [
+  makeTx("e-1", "ea-1", 1500, "income", "Paycheck", "2026-04-01"),
+  makeTx("e-2", "ea-1", -80, "groceries", "Supermarket", "2026-04-05"),
+  makeTx("e-3", "ea-1", -40, "dining", "Restaurant", "2026-04-10"),
+  makeTx("e-4", "ea-1", -200, "rent", "April Rent", "2026-04-01"),
+  // Prior month data for MoM comparison
+  makeTx("e-5", "ea-1", 1400, "income", "Paycheck", "2026-03-01"),
+  makeTx("e-6", "ea-1", -70, "groceries", "Store", "2026-03-05"),
+]);
+
+const accounts6 = readJsonFile(getFilePath("accounts.json"), z.array(AccountSchema));
+const txs6 = readJsonFile(getFilePath("transactions.json"), z.array(TransactionSchema));
+const budgets6 = readJsonFile(getFilePath("budgets.json"), z.array(BudgetSchema));
+const rules6 = readJsonFile(getFilePath("rules.json"), z.array(RecurringRuleSchema));
+
+const md6 = generateMarkdown("2026-04", accounts6, txs6, budgets6, rules6);
+
+assert(md6.includes("# Financial Summary"), "Header present");
+assert(md6.includes("## Account Balances"), "Account Balances section present");
+assert(md6.includes("## Income vs Expenses"), "Income vs Expenses section present");
+assert(md6.includes("## Spending by Category"), "Spending by Category section present");
+assert(md6.includes("## Top Transactions"), "Top Transactions section present");
+assert(md6.includes("## Budget Status"), "Budget Status section present (budgets exist)");
+assert(md6.includes("## Recurring Rules"), "Recurring Rules section present (rules exist)");
+assert(md6.includes("## Month-over-Month"), "Month-over-Month section present (prior data exists)");
+assert(md6.includes("$1,500.00"), "Income formatted correctly as $1,500.00");
+assert(md6.includes("$80.00"), "Grocery amount present");
+assert(md6.includes("Generated:"), "Generation timestamp present");
+
+// ─── Test 7: Export — month with no transactions ──────────────────────────────
+
+console.log("\nTest 7: Export — month with no transactions");
+resetData();
+
+const exportAcc7 = makeAccount("ea-7", "Savings");
+writeJsonFile(getFilePath("accounts.json"), [exportAcc7]);
+writeJsonFile(getFilePath("transactions.json"), []);
+writeJsonFile(getFilePath("budgets.json"), []);
+writeJsonFile(getFilePath("rules.json"), []);
+
+const accounts7 = readJsonFile(getFilePath("accounts.json"), z.array(AccountSchema));
+const txs7 = readJsonFile(getFilePath("transactions.json"), z.array(TransactionSchema));
+const budgets7 = readJsonFile(getFilePath("budgets.json"), z.array(BudgetSchema));
+const rules7 = readJsonFile(getFilePath("rules.json"), z.array(RecurringRuleSchema));
+
+const md7 = generateMarkdown("2026-04", accounts7, txs7, budgets7, rules7);
+
+assert(md7.includes("## Account Balances"), "Account balances section present even with no txs");
+assert(md7.includes("$0.00"), "Zero amounts shown when no transactions");
+assert(!md7.includes("## Budget Status"), "Budget Status section omitted when no budgets");
+assert(!md7.includes("## Recurring Rules"), "Recurring Rules section omitted when no rules");
+assert(!md7.includes("## Month-over-Month"), "Month-over-Month omitted when no prior data");
+
+// ─── Test 8: Export — custom output path ─────────────────────────────────────
+
+console.log("\nTest 8: Export — --output writes to specified path");
+const customOutputPath = join(testDir, "test-report.md");
+const accounts8 = [makeAccount("ea-8", "Checking")];
+const md8 = generateMarkdown("2026-04", accounts8, [], [], []);
+writeFileSync(customOutputPath, md8, "utf-8");
+
+assert(existsSync(customOutputPath), "File written to custom output path");
+const content8 = readFileSync(customOutputPath, "utf-8");
+assert(content8.includes("# Financial Summary"), "Written file contains valid markdown");
+
+// ─── Test 9: Export — month-over-month comparison ─────────────────────────────
+
+console.log("\nTest 9: Export — month-over-month comparison");
+resetData();
+
+const exportAcc9 = makeAccount("ea-9", "Checking");
+writeJsonFile(getFilePath("accounts.json"), [exportAcc9]);
+writeJsonFile(getFilePath("budgets.json"), []);
+writeJsonFile(getFilePath("rules.json"), []);
+writeJsonFile(getFilePath("transactions.json"), [
+  makeTx("e9-1", "ea-9", 2000, "income", "Salary", "2026-04-01"),
+  makeTx("e9-2", "ea-9", -300, "rent", "Rent", "2026-04-01"),
+  // Prior month
+  makeTx("e9-3", "ea-9", 1800, "income", "Salary", "2026-03-01"),
+  makeTx("e9-4", "ea-9", -350, "rent", "Rent", "2026-03-01"),
+]);
+
+const accounts9 = readJsonFile(getFilePath("accounts.json"), z.array(AccountSchema));
+const txs9 = readJsonFile(getFilePath("transactions.json"), z.array(TransactionSchema));
+const budgets9 = readJsonFile(getFilePath("budgets.json"), z.array(BudgetSchema));
+const rules9 = readJsonFile(getFilePath("rules.json"), z.array(RecurringRuleSchema));
+
+const md9 = generateMarkdown("2026-04", accounts9, txs9, budgets9, rules9);
+
+assert(md9.includes("## Month-over-Month"), "Month-over-Month section present");
+assert(md9.includes("March 2026"), "Prior month name shown");
+assert(md9.includes("$2,000.00"), "This month income formatted correctly");
+assert(md9.includes("$1,800.00"), "Prior month income formatted correctly");
 
 // ─── Cleanup & summary ────────────────────────────────────────────────────────
 
