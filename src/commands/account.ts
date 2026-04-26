@@ -170,3 +170,7 @@ export const accountCommand = new Command("account")
   .addCommand(addCmd)
   .addCommand(listCmd)
   .addCommand(removeCmd);
+
+export function registerAccountCommands(program: Command): void {
+  program.addCommand(accountCommand);
+}
