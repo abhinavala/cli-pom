@@ -281,6 +281,8 @@ export const txCommand = new Command("tx")
   .addCommand(listCmd)
   .addCommand(removeCmd);
 
-export function registerTransactionCommands(program: Command): void {
+export function registerTxCommands(program: Command): void {
   program.addCommand(txCommand);
 }
+
+export const registerTransactionCommands = registerTxCommands;
