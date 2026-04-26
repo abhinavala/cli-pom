@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { accountCommand } from "./commands/account.js";
 import { txCommand } from "./commands/tx.js";
 import { exportCommand } from "./commands/export.js";
+import { budgetCommand } from "./commands/budget.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -19,7 +20,7 @@ program
 // Subcommand groups
 const account = accountCommand;
 const tx = txCommand;
-const budget = new Command("budget").description("Manage budgets");
+const budget = budgetCommand;
 const rule = new Command("rule").description("Manage recurring rules");
 const importCmd = new Command("import").description("Import transactions");
 const report = new Command("report").description("Generate reports");
