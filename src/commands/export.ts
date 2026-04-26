@@ -8,8 +8,22 @@ import {
   BudgetSchema,
   RecurringRuleSchema,
 } from "../schemas.js";
-import type { Account, Transaction, Budget, RecurringRule } from "../schemas.js";
+import type { Transaction, RecurringRule } from "../schemas.js";
 import { z } from "zod";
+
+// Structural types using only the fields actually needed, avoiding zod default inference issues
+type ReportAccount = {
+  id: string;
+  name: string;
+  type: string;
+  startingBalance: number;
+};
+
+type ReportBudget = {
+  category: string;
+  monthlyLimit: number;
+  warnAt?: number;
+};
 
 function formatAmount(amount: number): string {
   const abs = Math.abs(amount);
@@ -49,7 +63,7 @@ function filterForMonth(
 }
 
 function computeMonthEndBalance(
-  account: Account,
+  account: ReportAccount,
   transactions: Transaction[],
   month: string
 ): number {
@@ -70,9 +84,9 @@ function monthLabel(month: string): string {
 
 export function generateMarkdown(
   month: string,
-  accounts: Account[],
+  accounts: ReportAccount[],
   allTransactions: Transaction[],
-  budgets: Budget[],
+  budgets: ReportBudget[],
   rules: RecurringRule[]
 ): string {
   const monthTxs = filterForMonth(allTransactions, month);
