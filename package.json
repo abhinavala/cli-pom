@@ -1,0 +1,31 @@
+{
+  "name": "fin-cli",
+  "version": "1.0.0",
+  "description": "Personal Finance Tracker CLI",
+  "type": "module",
+  "bin": {
+    "fin": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "tsx src/test.ts"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "chalk": "^5.0.0",
+    "commander": "^12.0.0",
+    "csv-parse": "^5.0.0",
+    "dayjs": "^1.11.0",
+    "nanoid": "^5.0.0",
+    "rrule": "^2.7.0",
+    "string-similarity": "^4.0.4",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/string-similarity": "^4.0.2",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
