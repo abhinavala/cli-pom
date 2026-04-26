@@ -127,6 +127,6 @@ export const importCommand = new Command("import")
     console.log(chalk.green(`\n✓ Imported ${toImport.length} transaction(s) into "${account.name}".`));
   });
 
-export function registerImportCommand(program: Command): void {
+export function registerImportCommands(program: Command): void {
   program.addCommand(importCommand);
 }
