@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { ensureInitialized } from "./storage/index.js";
 import { createRequire } from "node:module";
 import { accountCommand } from "./commands/account.js";
+import { txCommand } from "./commands/tx.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -16,7 +17,7 @@ program
 
 // Subcommand groups
 const account = accountCommand;
-const tx = new Command("tx").description("Manage transactions");
+const tx = txCommand;
 const budget = new Command("budget").description("Manage budgets");
 const rule = new Command("rule").description("Manage recurring rules");
 const importCmd = new Command("import").description("Import transactions");
